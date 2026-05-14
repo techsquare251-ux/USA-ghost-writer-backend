@@ -18,12 +18,15 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+origins = {settings.frontend_url, "http://127.0.0.1:3000"}
+if settings.frontend_url.startswith("https://www."):
+    origins.add(settings.frontend_url.replace("https://www.", "https://", 1))
+elif settings.frontend_url.startswith("https://"):
+    origins.add(settings.frontend_url.replace("https://", "https://www.", 1))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=sorted(origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

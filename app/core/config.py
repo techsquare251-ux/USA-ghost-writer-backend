@@ -15,6 +15,17 @@ class Settings(BaseSettings):
     smtp_secure: bool = False
     admin_emails: str
 
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str | None = None
+    google_calendar_id: str = "primary"
+
+    meeting_duration_minutes: int = 15
+    meeting_buffer_minutes: int = 0
+    meeting_timezone: str = "UTC"
+    business_hours_start: str = "00:00"
+    business_hours_end: str = "23:59"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     @property

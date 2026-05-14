@@ -78,3 +78,57 @@ async def send_contact_emails(payload: dict[str, str | None]) -> None:
 
     await send_email(admin_subject, settings.admin_email_list, admin_html, text_body)
     await send_email(user_subject, [str(payload.get("email"))], user_html, text_body)
+
+
+def build_booking_plain(payload: dict[str, str | None]) -> str:
+        lines = [
+                "Meeting booked:",
+                f"Name: {payload.get('name')}",
+                f"Email: {payload.get('email')}",
+                f"Phone: {payload.get('phone')}",
+                f"Start: {payload.get('start')}",
+                f"End: {payload.get('end')}",
+                f"Message: {payload.get('message') or 'N/A'}",
+        ]
+        return "\n".join(lines)
+
+
+def build_booking_admin_html(payload: dict[str, str | None]) -> str:
+        return f"""
+        <div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#1B263B;\">
+            <h2 style=\"color:#0B3C6D;\">New meeting booked</h2>
+            <p><strong>Name:</strong> {payload.get('name')}</p>
+            <p><strong>Email:</strong> {payload.get('email')}</p>
+            <p><strong>Phone:</strong> {payload.get('phone')}</p>
+            <p><strong>Start:</strong> {payload.get('start')}</p>
+            <p><strong>End:</strong> {payload.get('end')}</p>
+            <p><strong>Message:</strong><br />{payload.get('message') or 'N/A'}</p>
+        </div>
+        """
+
+
+def build_booking_user_html(payload: dict[str, str | None]) -> str:
+        return f"""
+        <div style=\"font-family:Arial,sans-serif;line-height:1.6;color:#1B263B;\">
+            <h2 style=\"color:#0B3C6D;\">Your meeting is confirmed</h2>
+            <p>Hi {payload.get('name')},</p>
+            <p>We have booked your call. Here are the details:</p>
+            <ul>
+                <li><strong>Start:</strong> {payload.get('start')}</li>
+                <li><strong>End:</strong> {payload.get('end')}</li>
+            </ul>
+            <p>We look forward to speaking with you.</p>
+        </div>
+        """
+
+
+async def send_booking_emails(payload: dict[str, str | None]) -> None:
+        admin_subject = f"Meeting booked by {payload.get('name')}"
+        user_subject = "Your meeting is confirmed"
+
+        text_body = build_booking_plain(payload)
+        admin_html = build_booking_admin_html(payload)
+        user_html = build_booking_user_html(payload)
+
+        await send_email(admin_subject, settings.admin_email_list, admin_html, text_body)
+        await send_email(user_subject, [str(payload.get("email"))], user_html, text_body)

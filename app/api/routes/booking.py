@@ -148,7 +148,7 @@ async def book_meeting(
     created = service.events().insert(
         calendarId=settings.google_calendar_id,
         body=event,
-        sendUpdates="all",
+        sendUpdates="none",
     ).execute()
 
     background_tasks.add_task(

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     smtp_pass: str
     smtp_from: str
     smtp_secure: bool = False
+    smtp_timeout_seconds: int = 30
     admin_emails: str
 
     google_client_id: str | None = None

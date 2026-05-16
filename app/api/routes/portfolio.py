@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,16 +10,12 @@ from app.schemas.portfolio import PortfolioCategory, PortfolioItemResponse
 from app.services.portfolio import list_portfolio_items
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+logger = logging.getLogger(__name__)
 
 
-@router.get("", response_model=list[PortfolioItemResponse], response_model_by_alias=False)
-async def get_portfolio_items(
-    category: PortfolioCategory | None = Query(default=None),
-    session: AsyncSession = Depends(get_session),
-) -> list[PortfolioItemResponse]:
-    items = await list_portfolio_items(session, category=category)
-    return [
-        PortfolioItemResponse.model_validate(
+def serialize_portfolio_item(item) -> PortfolioItemResponse | None:
+    try:
+        return PortfolioItemResponse.model_validate(
             {
                 "id": item.id,
                 "title": item.title,
@@ -30,5 +28,16 @@ async def get_portfolio_items(
                 "sort_order": item.sort_order,
             }
         )
-        for item in items
-    ]
+    except Exception:
+        logger.exception("Skipping invalid portfolio item %s", getattr(item, "id", "unknown"))
+        return None
+
+
+@router.get("", response_model=list[PortfolioItemResponse], response_model_by_alias=False)
+async def get_portfolio_items(
+    category: PortfolioCategory | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> list[PortfolioItemResponse]:
+    items = await list_portfolio_items(session, category=category)
+    payload = [serialize_portfolio_item(item) for item in items]
+    return [item for item in payload if item is not None]

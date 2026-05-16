@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     google_redirect_uri: str | None = None
     google_calendar_id: str = "primary"
 
+    admin_api_token: str | None = None
+
+    trustpilot_api_base_url: str = "https://api.trustpilot.com"
+    trustpilot_business_unit_id: str | None = None
+    trustpilot_api_key: str | None = None
+    trustpilot_client_id: str | None = None
+    trustpilot_client_secret: str | None = None
+    trustpilot_access_token: str | None = None
+    trustpilot_cache_ttl_seconds: int = 3600
+    trustpilot_default_limit: int = 5
+
     meeting_duration_minutes: int = 15
     meeting_buffer_minutes: int = 0
     meeting_timezone: str = "UTC"

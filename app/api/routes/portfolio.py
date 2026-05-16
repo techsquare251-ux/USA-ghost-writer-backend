@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_session
+from app.schemas.portfolio import PortfolioCategory, PortfolioItemResponse
+from app.services.portfolio import list_portfolio_items
+
+router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+
+
+@router.get("", response_model=list[PortfolioItemResponse], response_model_by_alias=False)
+async def get_portfolio_items(
+    category: PortfolioCategory | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> list[PortfolioItemResponse]:
+    items = await list_portfolio_items(session, category=category)
+    return [
+        PortfolioItemResponse.model_validate(
+            {
+                "id": item.id,
+                "title": item.title,
+                "author": item.author,
+                "category": item.category,
+                "genre": item.genre,
+                "cover_image": item.cover_image,
+                "amazon_url": item.amazon_url,
+                "description": item.description,
+                "sort_order": item.sort_order,
+            }
+        )
+        for item in items
+    ]

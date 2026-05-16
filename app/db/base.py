@@ -6,4 +6,5 @@ class Base(DeclarativeBase):
 
 
 from app.models import contact  # noqa: E402,F401
+from app.models import portfolio  # noqa: E402,F401
 from app.models import oauth_token  # noqa: E402,F401

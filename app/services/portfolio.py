@@ -9,6 +9,7 @@ from fastapi import UploadFile
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.portfolio import PortfolioItem
 from app.schemas.portfolio import PortfolioCategory, PortfolioItemCreate, PortfolioItemUpdate
 

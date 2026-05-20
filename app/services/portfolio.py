@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -9,8 +7,7 @@ from fastapi import UploadFile
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.models.portfolio import PortfolioItem
+from app.models.portfolio import PortfolioCoverImage, PortfolioItem
 from app.schemas.portfolio import PortfolioCategory, PortfolioItemCreate, PortfolioItemUpdate
 
 PORTFOLIO_SEED_ITEMS: list[dict[str, Any]] = [
@@ -203,7 +200,7 @@ async def create_portfolio_item(session: AsyncSession, payload: PortfolioItemCre
 
     item = PortfolioItem(**payload.model_dump(by_alias=True))
     session.add(item)
-    await session.commit()
+    await session.flush()
     await session.refresh(item)
     return item
 
@@ -221,7 +218,7 @@ async def update_portfolio_item(
     for key, value in updates.items():
         setattr(item, key, value)
 
-    await session.commit()
+    await session.flush()
     await session.refresh(item)
     return item
 
@@ -232,32 +229,46 @@ async def delete_portfolio_item(session: AsyncSession, item_id: str) -> bool:
         return False
 
     await session.delete(item)
-    await session.commit()
+    await session.flush()
     return True
 
 
-async def save_portfolio_cover_image(upload_file: UploadFile) -> str:
+async def save_portfolio_cover_image(session: AsyncSession, item_id: str, upload_file: UploadFile) -> str:
     """
-    Save an uploaded portfolio cover image to a configured writable directory.
-    Returns the relative path for storage in the database (e.g., '/books/filename.jpg').
+    Save an uploaded portfolio cover image to the database.
+    Returns the public route for the stored image.
     """
-    # Use an explicit writable directory in production; keep the local repo path as the fallback.
-    books_dir = (
-        Path(settings.portfolio_cover_upload_dir)
-        if settings.portfolio_cover_upload_dir
-        else Path(__file__).resolve().parent.parent.parent.parent / "liblit-publisher" / "public" / "books"
-    )
-    books_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Generate a unique filename to avoid collisions
-    file_ext = Path(upload_file.filename or "").suffix or ".jpg"
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = books_dir / unique_filename
-    
-    # Save the file
     content = await upload_file.read()
-    with open(file_path, "wb") as f:
-        f.write(content)
-    
-    # Return the relative path for the database
-    return f"{settings.portfolio_cover_public_path.rstrip('/')}/{unique_filename}"
+    filename = Path(upload_file.filename or f"{item_id}.bin").name or f"{item_id}.bin"
+    content_type = upload_file.content_type or "application/octet-stream"
+
+    cover_image = await session.get(PortfolioCoverImage, item_id)
+    if cover_image is None:
+        cover_image = PortfolioCoverImage(
+            item_id=item_id,
+            filename=filename,
+            content_type=content_type,
+            data=content,
+        )
+        session.add(cover_image)
+    else:
+        cover_image.filename = filename
+        cover_image.content_type = content_type
+        cover_image.data = content
+
+    await session.flush()
+    return f"/api/portfolio/{item_id}/cover-image"
+
+
+async def get_portfolio_cover_image(session: AsyncSession, item_id: str) -> PortfolioCoverImage | None:
+    return await session.get(PortfolioCoverImage, item_id)
+
+
+async def delete_portfolio_cover_image(session: AsyncSession, item_id: str) -> bool:
+    cover_image = await session.get(PortfolioCoverImage, item_id)
+    if not cover_image:
+        return False
+
+    await session.delete(cover_image)
+    await session.flush()
+    return True

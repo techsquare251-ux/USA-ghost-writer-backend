@@ -9,6 +9,7 @@ from app.schemas.portfolio import PortfolioItemCreate, PortfolioItemResponse, Po
 from app.services.portfolio import (
     create_portfolio_item,
     delete_portfolio_item,
+    delete_portfolio_cover_image,
     list_portfolio_items,
     save_portfolio_cover_image,
     update_portfolio_item,
@@ -69,8 +70,7 @@ async def admin_create_portfolio_item(
     await require_admin_token(request)
     
     try:
-        # Save cover image - it's required
-        cover_image_path = await save_portfolio_cover_image(cover_image)
+        cover_image_path = await save_portfolio_cover_image(session, id, cover_image)
         
         payload = PortfolioItemCreate(
             id=id,
@@ -85,9 +85,12 @@ async def admin_create_portfolio_item(
         )
         
         item = await create_portfolio_item(session, payload)
+        await session.commit()
     except ValueError as exc:
+        await session.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except Exception as exc:
+        await session.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error saving cover image: {str(exc)}") from exc
     
     return PortfolioItemResponse.model_validate(
@@ -132,14 +135,19 @@ async def admin_update_portfolio_item(
             data = json.loads(body)
             payload = PortfolioItemUpdate(**data)
             item = await update_portfolio_item(session, item_id, payload)
+            await session.commit()
         except LookupError as exc:
+            await session.rollback()
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except Exception as exc:
+            await session.rollback()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error saving cover image: {str(exc)}") from exc
     # Handle multipart form data
     else:
         # Save cover image if provided
         cover_image_path = None
         if cover_image and cover_image.filename:
-            cover_image_path = await save_portfolio_cover_image(cover_image)
+            cover_image_path = await save_portfolio_cover_image(session, item_id, cover_image)
         
         # Build update payload - only include provided fields
         update_data = {}
@@ -164,8 +172,13 @@ async def admin_update_portfolio_item(
         
         try:
             item = await update_portfolio_item(session, item_id, payload)
+            await session.commit()
         except LookupError as exc:
+            await session.rollback()
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except Exception as exc:
+            await session.rollback()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error saving cover image: {str(exc)}") from exc
     
     return PortfolioItemResponse.model_validate(
         {
@@ -189,7 +202,16 @@ async def admin_delete_portfolio_item(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, bool]:
     await require_admin_token(request)
-    deleted = await delete_portfolio_item(session, item_id)
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found.")
+    try:
+        await delete_portfolio_cover_image(session, item_id)
+        deleted = await delete_portfolio_item(session, item_id)
+        if not deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found.")
+        await session.commit()
+    except HTTPException:
+        await session.rollback()
+        raise
+    except Exception as exc:
+        await session.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {"deleted": True}

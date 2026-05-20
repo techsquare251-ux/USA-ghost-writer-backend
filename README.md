@@ -26,9 +26,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### Production uploads
 
-Portfolio cover images are written to the directory configured by `PORTFOLIO_COVER_UPLOAD_DIR`. If that variable is not set, the backend falls back to the local repo path used during development.
-
-For production, point `PORTFOLIO_COVER_UPLOAD_DIR` at a writable persistent volume and keep `PORTFOLIO_COVER_PUBLIC_PATH` aligned with the URL path that serves those files.
+Portfolio cover images are now stored in the database and served through `/api/portfolio/{item_id}/cover-image`, so production does not need a writable filesystem for uploads.
 
 ## Endpoint
 

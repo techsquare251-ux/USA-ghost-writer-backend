@@ -23,9 +23,6 @@ class Settings(BaseSettings):
 
     admin_api_token: str | None = None
 
-    portfolio_cover_upload_dir: str | None = None
-    portfolio_cover_public_path: str = "/books"
-
     trustpilot_api_base_url: str = "https://api.trustpilot.com"
     trustpilot_business_unit_id: str | None = None
     trustpilot_api_key: str | None = None

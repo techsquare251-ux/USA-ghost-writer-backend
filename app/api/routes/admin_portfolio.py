@@ -70,21 +70,20 @@ async def admin_create_portfolio_item(
     await require_admin_token(request)
     
     try:
-        cover_image_path = await save_portfolio_cover_image(session, id, cover_image)
-        
         payload = PortfolioItemCreate(
             id=id,
             title=title,
             author=author,
             category=category,
             genre=genre,
-            cover_image=cover_image_path,
+            cover_image=f"/api/portfolio/{id}/cover-image",
             amazon_url=amazon_url,
             description=description,
             sort_order=sort_order,
         )
         
         item = await create_portfolio_item(session, payload)
+        await save_portfolio_cover_image(session, id, cover_image)
         await session.commit()
     except ValueError as exc:
         await session.rollback()

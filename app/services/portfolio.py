@@ -237,12 +237,15 @@ async def delete_portfolio_item(session: AsyncSession, item_id: str) -> bool:
 
 async def save_portfolio_cover_image(upload_file: UploadFile) -> str:
     """
-    Save an uploaded portfolio cover image to public/books/ directory.
+    Save an uploaded portfolio cover image to a configured writable directory.
     Returns the relative path for storage in the database (e.g., '/books/filename.jpg').
     """
-    # Create target directory if it doesn't exist
-    # The public/books directory should be at ../../../public/books from the service file
-    books_dir = Path(__file__).resolve().parent.parent.parent.parent / "liblit-publisher" / "public" / "books"
+    # Use an explicit writable directory in production; keep the local repo path as the fallback.
+    books_dir = (
+        Path(settings.portfolio_cover_upload_dir)
+        if settings.portfolio_cover_upload_dir
+        else Path(__file__).resolve().parent.parent.parent.parent / "liblit-publisher" / "public" / "books"
+    )
     books_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate a unique filename to avoid collisions
@@ -256,4 +259,4 @@ async def save_portfolio_cover_image(upload_file: UploadFile) -> str:
         f.write(content)
     
     # Return the relative path for the database
-    return f"/books/{unique_filename}"
+    return f"{settings.portfolio_cover_public_path.rstrip('/')}/{unique_filename}"
